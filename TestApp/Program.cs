@@ -3,6 +3,15 @@ using ActionDispatcher;
 
 Console.WriteLine("Hello, World!");
 
-Console.WriteLine(await new Dispatcher().RunAsync("Test1.json"));
+var dispatcher = new Dispatcher();
+dispatcher.IntermediateResultEvent += Dispatcher_IntermediateResultEvent;
+
+async Task Dispatcher_IntermediateResultEvent(float intermediateResult)
+{
+    Console.WriteLine(intermediateResult);
+    await Task.CompletedTask;
+}
+
+Console.WriteLine(await dispatcher.RunAsync("Test1.json"));
 
 Console.ReadKey();

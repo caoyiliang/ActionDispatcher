@@ -1,13 +1,17 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using System.Text.Json;
 
 namespace ActionDispatcher
 {
-    public record class Parameter(string Type, JsonElement Value);
-    public record class Action(string Path, string Type, string Name, List<Parameter> Parameters);
-    public record class TaskQueue(List<Action> Actions);
+    internal record class Parameter(string Type, JsonElement Value);
+    internal record class Action(string Path, string Type, string Name, List<Parameter> Parameters);
+    internal record class TaskQueue(List<Action> Actions);
+
     public class Dispatcher
     {
+        public delegate Task IntermediateResultEventHandler(float intermediateResult);
+        public event IntermediateResultEventHandler? IntermediateResultEvent;
         public async Task BuildAsync()
         {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
@@ -65,7 +69,11 @@ namespace ActionDispatcher
                     if (paramValue is null) continue;
                     parameters.Add(paramValue);
                 }
-                if (!(bool?)methodInfo.Invoke(instance, [.. parameters]) ?? false) return false;
+                var t = (Task<(bool succeed, float value)>?)methodInfo.Invoke(instance, [.. parameters]);
+                if (t is null) continue;
+                var rs = await t;
+                if (!rs.succeed) return false;
+                if (IntermediateResultEvent is not null) await IntermediateResultEvent(rs.value);
             }
             return true;
         }

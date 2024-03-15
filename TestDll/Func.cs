@@ -2,9 +2,10 @@
 {
     public class Func
     {
-        public bool AddVerify(int a1, int a2, int validationItem)
+        public async Task<(bool, float)> AddVerify(int a1, int a2, int validationItem)
         {
-            return a1 + a2 == validationItem;
+            var rs = a1 + a2;
+            return await Task.FromResult((rs == validationItem, rs));
         }
     }
 }
