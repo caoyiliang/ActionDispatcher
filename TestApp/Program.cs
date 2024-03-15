@@ -3,4 +3,6 @@ using ActionDispatcher;
 
 Console.WriteLine("Hello, World!");
 
-await new Dispatcher().RunAsync("Test1.json");
+Console.WriteLine(await new Dispatcher().RunAsync("Test1.json"));
+
+Console.ReadKey();

@@ -41,39 +41,33 @@ namespace ActionDispatcher
             await JsonSerializer.SerializeAsync(createStream, taskQ);
         }
 
-        public async Task RunAsync(string file)
+        public async Task<bool> RunAsync(string file)
         {
             await using FileStream openStream = File.OpenRead(file);
-            try
+            var task = await JsonSerializer.DeserializeAsync<TaskQueue>(openStream);
+            if (task is null) return false;
+            foreach (var action in task.Actions)
             {
-                var task = await JsonSerializer.DeserializeAsync<TaskQueue>(openStream);
-                if (task is null) return;
-                foreach (var action in task.Actions)
+                var assembly = Assembly.LoadFrom(action.Path);
+                if (assembly is null) continue;
+                var myType = assembly.GetType(action.Type);
+                if (myType is null) continue;
+                var methodInfo = myType.GetMethod(action.Name);
+                if (methodInfo is null) continue;
+                var instance = Activator.CreateInstance(myType);
+                if (instance is null) continue;
+                var parameters = new List<object>();
+                foreach (var paramInfo in action.Parameters)
                 {
-                    var assembly = Assembly.LoadFrom(action.Path);
-                    if (assembly is null) continue;
-                    var myType = assembly.GetType(action.Type);
-                    if (myType is null) continue;
-                    var methodInfo = myType.GetMethod(action.Name);
-                    if (methodInfo is null) continue;
-                    var instance = Activator.CreateInstance(myType);
-                    if (instance is null) continue;
-                    var parameters = new List<object>();
-                    foreach (var paramInfo in action.Parameters)
-                    {
-                        var paramType = Type.GetType(paramInfo.Type);
-                        if (paramType is null) continue;
-                        var paramValue = JsonSerializer.Deserialize(paramInfo.Value.GetRawText(), paramType);
-                        if (paramValue is null) continue;
-                        parameters.Add(paramValue);
-                    }
-                    var a = methodInfo.Invoke(instance, [.. parameters]);
+                    var paramType = Type.GetType(paramInfo.Type);
+                    if (paramType is null) continue;
+                    var paramValue = JsonSerializer.Deserialize(paramInfo.Value.GetRawText(), paramType);
+                    if (paramValue is null) continue;
+                    parameters.Add(paramValue);
                 }
+                if (!(bool?)methodInfo.Invoke(instance, [.. parameters]) ?? false) return false;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
+            return true;
         }
     }
 }

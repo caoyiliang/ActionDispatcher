@@ -2,9 +2,9 @@
 {
     public class Func
     {
-        public int Add(int a, int b)
+        public bool AddVerify(int a1, int a2, int validationItem)
         {
-            return a + b;
+            return a1 + a2 == validationItem;
         }
     }
 }
